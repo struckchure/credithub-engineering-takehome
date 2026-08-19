@@ -2,7 +2,7 @@ from datetime import datetime
 
 from app.dto.base import BaseDto
 from app.dto.loan import LoanDto
-from app.models.payment_event import PaymentStatus
+from app.models.payment_event import PaymentStatus, RejectionReason
 
 
 class PaymentDto(BaseDto):
@@ -12,6 +12,7 @@ class PaymentDto(BaseDto):
     amount: float
     channel: str
     status: PaymentStatus
+    reason_code: RejectionReason | None
     reason: str | None
     received_at: datetime | None
     processed_at: datetime | None

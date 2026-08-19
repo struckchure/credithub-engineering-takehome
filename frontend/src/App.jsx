@@ -1,22 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 import "./styles.css";
+import AdminPanel from "./components/AdminPanel";
+import { LOAN_LABEL, PAY_LABEL, ngn, relativeTime } from "./lib/format";
 
 // This whole screen is PROVIDED. It fires synthetic payments at the webhook and
 // shows the feed + live loan balances. Your task is the backend webhook that
 // reconciles each payment on receipt — POST /webhooks/payments. Once you build
 // it, "Simulate incoming payment" will show payments getting applied/rejected
-// and the balances updating here. (The token below mirrors app/auth.py.)
+// and the balances updating here. (The token below mirrors app/services/auth.py.)
 
 const WEBHOOK_TOKEN = "dev-webhook-secret";
-
-const ngn = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  maximumFractionDigits: 2,
-});
-
-const LOAN_LABEL = { active: "Active", paid_off: "Paid off", cancelled: "Cancelled", written_off: "Written off" };
-const PAY_LABEL = { pending: "Pending", applied: "Applied", rejected: "Rejected" };
 
 export default function App() {
   const [loans, setLoans] = useState(null);
@@ -24,6 +17,12 @@ export default function App() {
   const [error, setError] = useState(null);
   const [note, setNote] = useState(null);
   const [busy, setBusy] = useState(false);
+  // null = loading, [] = empty, false = endpoint unavailable
+  const [audit, setAudit] = useState(null);
+  const [loadedAt, setLoadedAt] = useState(null);
+  const [tab, setTab] = useState(() =>
+    window.location.hash === "#admin" ? "admin" : "feed"
+  );
 
   const load = useCallback(() => {
     setError(null);
@@ -31,11 +30,34 @@ export default function App() {
       fetch("/loans").then((r) => { if (!r.ok) throw new Error(`loans HTTP ${r.status}`); return r.json(); }),
       fetch("/payment-events").then((r) => { if (!r.ok) throw new Error(`events HTTP ${r.status}`); return r.json(); }),
     ])
-      .then(([l, e]) => { setLoans(l); setEvents(e); })
+      .then(([l, e]) => { setLoans(l); setEvents(e); setLoadedAt(Date.now()); })
       .catch((err) => setError(String(err.message || err)));
+
+    // Deliberately outside the Promise.all: the audit trail is the panel's
+    // nice-to-have, and a missing proxy entry must not blank the whole app.
+    fetch("/audit-log?limit=200")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then(setAudit)
+      .catch(() => setAudit(false));
   }, []);
 
   useEffect(load, [load]);
+
+  const showTab = (next) => {
+    setTab(next);
+    window.history.replaceState(null, "", next === "admin" ? "#admin" : " ");
+  };
+
+  // An ops panel that silently goes stale is worse than one that says it is.
+  // Only while the Admin tab is open, the document is visible, and nothing is
+  // in flight.
+  useEffect(() => {
+    if (tab !== "admin") return undefined;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible" && !busy) load();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [tab, busy, load]);
 
   // POST a synthetic payment to the webhook — the "a payment just arrived" event.
   const send = async (payload) => {
@@ -97,6 +119,38 @@ export default function App() {
       )}
       {note && <div className="banner note">{note}</div>}
 
+      <div className="tabs" role="tablist">
+        <button
+          className="tab"
+          role="tab"
+          aria-selected={tab === "feed"}
+          onClick={() => showTab("feed")}
+        >
+          Feed
+        </button>
+        <button
+          className="tab"
+          role="tab"
+          aria-selected={tab === "admin"}
+          onClick={() => showTab("admin")}
+        >
+          Admin
+        </button>
+      </div>
+
+      {tab === "admin" && (
+        <AdminPanel
+          loans={loans}
+          events={events}
+          audit={audit}
+          busy={busy}
+          onRetry={resend}
+          updatedAt={relativeTime(loadedAt ? new Date(loadedAt).toISOString() : null)}
+        />
+      )}
+
+      {tab === "feed" && (
+      <>
       <div className="stats">
         <div className="stat"><div className="k">Active loans</div><div className="v">{loans ? active.length : "—"}</div></div>
         <div className="stat"><div className="k">Outstanding · active</div><div className="v">{loans ? ngn.format(outstanding) : "—"}</div></div>
@@ -189,6 +243,9 @@ export default function App() {
         </table>
       </div>
 
+      </>
+      )}
+
       <div className="todo">
         <h3>Your task</h3>
         This screen is provided. <b>Core:</b> build{" "}
@@ -197,9 +254,7 @@ export default function App() {
         the loan closed when fully repaid, audited, in one transaction. Handle a
         rail <b>redelivery</b> (the <b>Resend&nbsp;↻</b> button re-fires the same
         reference — it must not apply twice), a payment for a closed loan, and
-        overpayment. <b>Extension:</b> build an <b>admin reconciliation &amp; issues
-        panel</b> that showcases what reconciled and the issues needing attention.
-        See <code>README.md</code>.
+        overpayment. See <code>README.md</code>.
       </div>
     </div>
   );

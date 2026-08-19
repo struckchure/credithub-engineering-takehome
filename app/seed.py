@@ -8,7 +8,13 @@ so the feed isn't empty on first load. New payments arrive via the webhook (the
 """
 
 from app.config.db import Base, SessionLocal, engine
-from app.models import Loan, LoanStatus, PaymentEvent, PaymentStatus
+from app.models import (
+    Loan,
+    LoanStatus,
+    PaymentEvent,
+    PaymentStatus,
+    RejectionReason,
+)
 
 
 def seed() -> None:
@@ -92,7 +98,27 @@ def seed() -> None:
             amount=5000,
             channel="cbs",
             status=PaymentStatus.rejected,
+            reason_code=RejectionReason.loan_not_active,
             reason="loan is cancelled, not active",
+        ),
+        # a rail redelivering PSK-8001 — handled correctly, not an exception
+        PaymentEvent(
+            external_ref="PSK-8001",
+            loan_id=2,
+            amount=28000,
+            channel="paystack",
+            status=PaymentStatus.rejected,
+            reason_code=RejectionReason.duplicate,
+            reason="duplicate of an applied payment (PSK-8001)",
+        ),
+        PaymentEvent(
+            external_ref="PSK-8004",
+            loan_id=6,
+            amount=50000,
+            channel="gsi",
+            status=PaymentStatus.rejected,
+            reason_code=RejectionReason.overpayment,
+            reason="overpays outstanding 37333.33 by 12666.67",
         ),
     ]
     db.add_all(events)

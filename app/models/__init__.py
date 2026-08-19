@@ -8,7 +8,7 @@ module-level ``from models.loan import Loan``.
 
 from app.models.audit import AuditLog
 from app.models.loan import Loan, LoanStatus
-from app.models.payment_event import PaymentEvent, PaymentStatus
+from app.models.payment_event import PaymentEvent, PaymentStatus, RejectionReason
 from app.models.repayment import Repayment
 
 __all__ = [
@@ -17,5 +17,6 @@ __all__ = [
     "LoanStatus",
     "PaymentEvent",
     "PaymentStatus",
+    "RejectionReason",
     "Repayment",
 ]

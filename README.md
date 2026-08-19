@@ -52,19 +52,23 @@ the transaction boundary; DTOs are the wire.
   `POST /webhooks/payments` (token-gated).
 - `services/loans.py`, `services/repayment.py` — loan and ledger data access.
   `get_*` raises `404`; `find_*` returns `None`.
-- `services/payments.py` — reconciliation: record the event, then apply or reject.
+- `services/payments.py` — reconciliation: record the event, then apply or reject
+  with a machine-readable `reason_code`.
+- `services/audit.py`, `routers/audit.py` — `GET /audit-log`, the panel's trail.
 - `services/auth.py` — `require_webhook_token` (the `X-Webhook-Token` header).
 - `config/db.py` — engine, session, and the `DbSession` dependency.
 - `utils/audit.py` — audit helper (writes into the caller's transaction).
 - `seed.py` — `python -m app.seed`. Run as a module, not as a script.
-- `tests/` — `test_loans.py`, the feed test, and the webhook spec in
-  `test_payments.py` all pass.
+- `tests/` — the provided specs plus `test_reason_codes.py` and
+  `test_audit.py`; all 22 pass.
 
 **Frontend** (`frontend/`)
-- React + Vite. The base screen — feed + live balances — is **provided**
-  (`Simulate` sends a payment; `Resend ↻` re-fires one, a rail redelivery). The
-  core task is the backend; building an **admin reconciliation & issues panel** is
-  a frontend extension (see *Your task*).
+- React + Vite, two tabs. **Feed** is the provided screen, unchanged (`Simulate`
+  sends a payment; `Resend ↻` re-fires one, a rail redelivery).
+- **Admin** (`#admin`) is the reconciliation & issues panel: health strip, issues
+  grouped by rejection reason and ordered by how much an operator should care,
+  what reconciled, per-channel failure rates, and the activity trail.
+  `src/components/` holds the panel, `src/lib/metrics.js` the arithmetic.
 
 ---
 

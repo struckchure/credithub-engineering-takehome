@@ -14,6 +14,21 @@ class PaymentStatus(str, enum.Enum):
     rejected = "rejected"  # could not be applied (bad loan state, duplicate, …)
 
 
+class RejectionReason(str, enum.Enum):
+    """Machine-readable *why* for a rejected event — what the admin panel groups
+    on. ``None`` unless the event is rejected.
+
+    Member name and value are deliberately identical: SQLAlchemy persists the
+    name, Pydantic serialises the value, and the frontend uses it as a CSS
+    modifier class. Keep all three the same string.
+    """
+
+    duplicate = "duplicate"  # this external_ref was already applied
+    unknown_loan = "unknown_loan"  # no loan with that id
+    loan_not_active = "loan_not_active"  # paid_off / cancelled / written_off
+    overpayment = "overpayment"  # more than the loan's outstanding
+
+
 class PaymentEvent(Base):
     """An incoming payment from a rail (gateway/GSI/CBS). Starts ``pending``.
 
@@ -49,7 +64,11 @@ class PaymentEvent(Base):
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus), nullable=False, default=PaymentStatus.pending
     )
-    # why it was rejected, if it was
+    # why it was rejected, if it was — the code is what the UI groups on, the
+    # prose carries the numbers
+    reason_code: Mapped[RejectionReason | None] = mapped_column(
+        Enum(RejectionReason), nullable=True
+    )
     reason: Mapped[str | None] = mapped_column(String, nullable=True)
     received_at: Mapped[datetime | None] = mapped_column(DateTime, default=utcnow)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
