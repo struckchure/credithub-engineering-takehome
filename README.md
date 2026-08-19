@@ -59,8 +59,8 @@ the transaction boundary; DTOs are the wire.
 - `config/db.py` — engine, session, and the `DbSession` dependency.
 - `utils/audit.py` — audit helper (writes into the caller's transaction).
 - `seed.py` — `python -m app.seed`. Run as a module, not as a script.
-- `tests/` — the provided specs plus `test_reason_codes.py` and
-  `test_audit.py`; all 22 pass.
+- `tests/` — the provided specs, plus `test_reason_codes.py`, `test_audit.py`
+  and `test_guards.py` (float tolerance, unique index, lost race); all 26 pass.
 
 **Frontend** (`frontend/`)
 - React + Vite, two tabs. **Feed** is the provided screen, unchanged (`Simulate`
