@@ -6,12 +6,16 @@ dependency to gate the webhook. (In a real system the token/secret would come
 from config, not a constant.)
 """
 
+from typing import Annotated
+
 from fastapi import Header, HTTPException
 
 WEBHOOK_TOKEN = "dev-webhook-secret"
 
 
-def require_webhook_token(x_webhook_token: str = Header(default="")) -> str:
+def require_webhook_token(
+    x_webhook_token: Annotated[str, Header()] = "",
+) -> str:
     if x_webhook_token != WEBHOOK_TOKEN:
         raise HTTPException(status_code=401, detail="invalid or missing webhook token")
     return x_webhook_token

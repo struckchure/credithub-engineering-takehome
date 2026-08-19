@@ -94,3 +94,88 @@ tbody tr:hover { background: var(--surface-2); }
 .todo { margin-top: 26px; border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 22px; color: var(--muted); background: var(--surface-2); font-size: 14px; line-height: 1.55; }
 .todo h3 { margin: 0 0 8px; color: var(--text); font-size: 15px; }
 .todo code { background: var(--accent-weak); color: var(--accent); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+
+/* ---------- Admin reconciliation & issues panel ---------- */
+/* Every colour comes from the tokens above, so dark mode needs no extra work. */
+
+.tabs { display: flex; gap: 4px; margin: 18px 0 20px; border-bottom: 1px solid var(--border); }
+.tab {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 14px; color: var(--muted);
+  padding: 9px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+
+.panel-h { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.panel-title { font-size: 17px; font-weight: 650; }
+
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
+
+.stats.four { grid-template-columns: repeat(4, 1fr); }
+.stat .hint { margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.stat.danger .v { color: var(--red); }
+.stat.warn .v { color: var(--amber); }
+.stat.ok .v { color: var(--green); }
+.danger-text { color: var(--red); }
+
+.count-pill {
+  display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  background: var(--red-bg); color: var(--red); font-size: 12px; font-weight: 600;
+}
+
+/* One block per rejection reason: badge + counts, then what to do about it. */
+.group-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 16px 0;
+}
+.group-help { padding: 6px 16px 12px; font-size: 12.5px; color: var(--muted); max-width: 62ch; }
+
+.rbadge {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em;
+}
+.rbadge.unknown_loan { background: var(--red-bg); color: var(--red); }
+.rbadge.overpayment,
+.rbadge.loan_not_active { background: var(--amber-bg); color: var(--amber); }
+.rbadge.duplicate,
+.rbadge.unclassified { background: var(--grey-bg); color: var(--grey); }
+
+.divider-label {
+  margin-top: 6px; padding: 14px 16px 0; border-top: 1px solid var(--border);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+
+.empty-ok { padding: 26px 16px; text-align: center; background: var(--green-bg); border-radius: var(--radius); }
+.empty-ok b { color: var(--green); }
+.empty-ok .hint { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+
+.why { margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.actions { white-space: nowrap; }
+.actions .btn + .btn { margin-left: 6px; }
+.copy { min-width: 76px; }
+.rel { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.pad { padding: 16px; }
+.pad .skeleton + .skeleton { margin-top: 8px; }
+
+.trail { list-style: none; margin: 0; padding: 4px 0; }
+.trail li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 16px; border-top: 1px solid var(--border);
+}
+.trail li:first-child { border-top: 0; }
+.trail-body { flex: 1; min-width: 0; }
+.trail-body .ref { font-family: var(--mono); font-size: 12.5px; }
+.trail-body .chan { text-transform: none; letter-spacing: 0; }
+.abadge {
+  flex: none; min-width: 66px; text-align: center;
+  padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+}
+.abadge.payment-received { background: var(--grey-bg); color: var(--grey); }
+.abadge.payment-applied { background: var(--green-bg); color: var(--green); }
+.abadge.payment-rejected { background: var(--red-bg); color: var(--red); }
+
+@media (max-width: 700px) { .stats.four { grid-template-columns: repeat(2, 1fr); } }

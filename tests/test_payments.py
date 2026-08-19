@@ -14,55 +14,65 @@ reconciled ON RECEIPT — recorded and immediately applied or rejected.
 These fail against the stub — make them pass, then add your own.
 """
 
+from fastapi.testclient import TestClient
+
+from app.dto.payment import WebhookPaymentRequestDto
+
 TOK = {"X-Webhook-Token": "dev-webhook-secret"}
 
 
-def _pay(ref, loan_id, amount, channel="paystack"):
-    return {"external_ref": ref, "loan_id": loan_id, "amount": amount, "channel": channel}
-
-
-def test_webhook_applies_payment_and_reduces_outstanding(client):
-    r = client.post("/webhooks/payments", json=_pay("R-1", 1, 20000), headers=TOK)
+def test_webhook_applies_payment_and_reduces_outstanding(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-1", loan_id=1, amount=20000)
+    r = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
     assert r.status_code == 200
     assert r.json()["event"]["status"] == "applied"
     assert client.get("/loans/1").json()["outstanding"] == 36000
 
 
-def test_exact_payoff_closes_loan(client):
-    client.post("/webhooks/payments", json=_pay("R-2", 1, 56000), headers=TOK)
+def test_exact_payoff_closes_loan(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-2", loan_id=1, amount=56000)
+    _ = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
     assert client.get("/loans/1").json()["status"] == "paid_off"
 
 
-def test_duplicate_external_ref_is_rejected(client):
-    client.post("/webhooks/payments", json=_pay("R-1", 1, 20000), headers=TOK)
-    r = client.post("/webhooks/payments", json=_pay("R-1", 1, 20000), headers=TOK)  # redelivery
+def test_duplicate_external_ref_is_rejected(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-1", loan_id=1, amount=20000)
+    _ = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
+    r = client.post(  # the rail redelivers the same reference
+        "/webhooks/payments", json=dto.model_dump(), headers=TOK
+    )
     assert r.json()["event"]["status"] == "rejected"
     assert client.get("/loans/1").json()["outstanding"] == 36000  # applied once only
 
 
-def test_payment_for_cancelled_loan_is_rejected(client):
-    r = client.post("/webhooks/payments", json=_pay("R-3", 2, 100), headers=TOK)  # loan 2 cancelled
+def test_payment_for_cancelled_loan_is_rejected(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-3", loan_id=2, amount=100)
+    r = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
     assert r.json()["event"]["status"] == "rejected"
     assert client.get("/loans/2").json()["outstanding"] == 11000  # untouched
 
 
-def test_unknown_loan_is_rejected(client):
-    r = client.post("/webhooks/payments", json=_pay("R-4", 999, 100), headers=TOK)
+def test_unknown_loan_is_rejected(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-4", loan_id=999, amount=100)
+    r = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
     assert r.json()["event"]["status"] == "rejected"
 
 
-def test_overpayment_is_rejected(client):
-    r = client.post("/webhooks/payments", json=_pay("R-5", 1, 999999), headers=TOK)
+def test_overpayment_is_rejected(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-5", loan_id=1, amount=999999)
+    r = client.post("/webhooks/payments", json=dto.model_dump(), headers=TOK)
     assert r.json()["event"]["status"] == "rejected"
     assert client.get("/loans/1").json()["outstanding"] == 56000  # untouched
 
 
-def test_webhook_requires_a_valid_token(client):
-    r = client.post("/webhooks/payments", json=_pay("R-6", 1, 100))  # no token
+def test_webhook_requires_a_valid_token(client: TestClient) -> None:
+    dto = WebhookPaymentRequestDto(external_ref="R-6", loan_id=1, amount=100)
+    r = client.post("/webhooks/payments", json=dto.model_dump())  # no token
     assert r.status_code == 401
 
 
 # --- provided endpoint (this already passes) ---
 
-def test_feed_endpoint_lists_events(client):
+
+def test_feed_endpoint_lists_events(client: TestClient) -> None:
     assert client.get("/payment-events").status_code == 200
