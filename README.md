@@ -41,15 +41,24 @@ frontend proxies to :8137, so keep the API on that port.)*
 
 ## What's here
 
-**Backend** (`app/`)
-- `models.py` — `Loan`, `PaymentEvent`, `Repayment`, `AuditLog`.
-- `loans.py` — read endpoints (provided).
-- `payments.py` — **provided:** `GET /payment-events` (the feed). **Your task:**
-  the `POST /webhooks/payments` stub.
-- `audit.py` — audit helper (writes into the caller's transaction).
-- `auth.py` — `require_webhook_token` (the `X-Webhook-Token` header).
-- `tests/` — `test_loans.py` + the feed test pass; the webhook spec in
-  `test_payments.py` **fails** against the stub.
+**Backend** (`app/`) — routers delegate to services; services own the queries and
+the transaction boundary; DTOs are the wire.
+- `models/` — `Loan`, `PaymentEvent`, `Repayment`, `AuditLog` (SQLAlchemy 2.0
+  `Mapped[...]`). Importing the package registers them all on `Base.metadata`.
+- `dto/` — `<Model>Dto` for responses, `<Action>RequestDto` for request bodies;
+  the routers pass them to `response_model`, so the OpenAPI spec is typed.
+- `routers/loans.py` — read endpoints (provided).
+- `routers/payments.py` — `GET /payment-events` (the feed) and
+  `POST /webhooks/payments` (token-gated).
+- `services/loans.py`, `services/repayment.py` — loan and ledger data access.
+  `get_*` raises `404`; `find_*` returns `None`.
+- `services/payments.py` — reconciliation: record the event, then apply or reject.
+- `services/auth.py` — `require_webhook_token` (the `X-Webhook-Token` header).
+- `config/db.py` — engine, session, and the `DbSession` dependency.
+- `utils/audit.py` — audit helper (writes into the caller's transaction).
+- `seed.py` — `python -m app.seed`. Run as a module, not as a script.
+- `tests/` — `test_loans.py`, the feed test, and the webhook spec in
+  `test_payments.py` all pass.
 
 **Frontend** (`frontend/`)
 - React + Vite. The base screen — feed + live balances — is **provided**
@@ -64,7 +73,7 @@ frontend proxies to :8137, so keep the API on that port.)*
 A payment just arrived from a rail. Body: `{external_ref, loan_id, amount, channel?}`.
 Reconcile it **on receipt**. Contract:
 
-- **`401`** without a valid `X-Webhook-Token` (see `auth.py`).
+- **`401`** without a valid `X-Webhook-Token` (see `services/auth.py`).
 - **Record** every incoming payment as a `PaymentEvent`, then either:
   - **Apply** it: record a `Repayment`, reduce the loan's outstanding, **close the
     loan** (`paid_off`) when fully repaid, mark the event **`applied`**, and write
